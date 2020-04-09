@@ -1,6 +1,6 @@
 #!/bin/python3.6
 import os,sys,shutil
-from lib.dump import *
+import lib.dump as dump
 
 if("-h" in sys.argv or "--help" in sys.argv):
     width=shutil.get_terminal_size()[0]
@@ -19,10 +19,10 @@ if(len(sys.argv) >= 3):
 
 
     if("--create" in sys.argv):
-        createDump(db=DB_NAME)
+        dump.createDump(db=DB_NAME)
     elif("--apply" in sys.argv):
         if("--force" in sys.argv):
-            clearDB(db=DB_NAME)
-        applyDump(db=DB_NAME)
+            dump.clearDB(db=DB_NAME)
+        dump.applyDump(db=DB_NAME)
 else:
     print("Too few arguments!\nPlease try with -h or --help")
