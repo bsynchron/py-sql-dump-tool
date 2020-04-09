@@ -3,24 +3,54 @@ import mysql.connector, shutil
 import os, json, sys
 
 
+
 DB_HOST="localhost"
 DB_USER="root"
 DB_USER_PASS=""
 
-DB_NAME="to_backup"
+DB_NAME=""
 
 BACKUP_PATH="/tmp/backup"
 
-
-
-def createDump(db=DB_NAME):
+def sql(dbname,create=False):
     DB = mysql.connector.connect(
     host=DB_HOST,
     user=DB_USER,
-    passwd=DB_USER_PASS,
-    database=db
+    passwd=DB_USER_PASS
     )
 
+    cursor = DB.cursor()
+    cursor.execute("SHOW DATABASES")
+    FOUND=False
+    for i in cursor:
+        if(i[0] == dbname):
+            DB = mysql.connector.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            passwd=DB_USER_PASS,
+            database=dbname
+            )
+            cursor = DB.cursor()
+            return DB
+    print(f"Could not find requested DB! [{dbname}]")
+    if(create==True):
+        print("Creating new DB...")
+        cursor.execute(f"CREATE DATABASE {dbname}")
+        DB = mysql.connector.connect(
+        host=DB_HOST,
+        user=DB_USER,
+        passwd=DB_USER_PASS,
+        database=dbname
+        )
+        cursor = DB.cursor()
+        return DB
+    else:
+        print("Closing...")
+        sys.exit(1)
+
+
+def createDump(db=DB_NAME):
+    DB = sql(db)
     cursor = DB.cursor()
     #create dump
     cursor.execute("SHOW TABLES;") #read all availiable table names from database
@@ -44,15 +74,8 @@ def createDump(db=DB_NAME):
 
 
 def applyDump(db=DB_NAME):
-    DB = mysql.connector.connect(
-    host=DB_HOST,
-    user=DB_USER,
-    passwd=DB_USER_PASS,
-    database=db
-    )
-
+    DB = sql(dbname=db,create=True)
     cursor = DB.cursor()
-
     DUMP_DIR="/tmp/backup/"
     try:
         _FILES=os.listdir(DUMP_DIR)
@@ -82,21 +105,49 @@ def applyDump(db=DB_NAME):
                 else:
                     SQL_QUERY+=f"{j[0]} {j[1]},"
             SQL_QUERY+=");"
+            cursor.execute(SQL_QUERY)
             try:
                 EXISTS=False
-                cursor.execute(SQL_QUERY)
+
             except Exception as e:
                 EXISTS=True
                 print("Could not recreate SQL table! -> ",e)
-            for k in TABLE[1]:
-                #fill table
+            if(EXISTS==False):
+                #build query
+
+                for k in TABLE[1]:
+                    SQL_QUERY=f"INSERT INTO {TABLENAME} ("
+                    for j in TABLE[0]:
+                        if(j == TABLE[0][-1]):
+                            SQL_QUERY+=f"{j[0]})"
+                        else:
+                            SQL_QUERY+=f"{j[0]},"
+                    SQL_QUERY+=" VALUES ("
+
+                    #fill table / k = row
+                    for l in k:
+                        if(l == k[-1]):
+                            SQL_QUERY+=f"'{l}'"
+                        else:
+                            SQL_QUERY+=f"'{l}',"
+                    SQL_QUERY+=");"
+                    cursor.execute(SQL_QUERY)
+                    DB.commit()
+                    print(SQL_QUERY)
         else:
             pass
     shutil.rmtree(f"{BACKUP_PATH}/d_{db}/")
 
-if("--create" in sys.argv):
-    createDump("to_backup")
-elif("--apply" in sys.argv):
-    applyDump()
-else:
-    print("Please append --create or --apply to the command!")
+def clearDB(db=DB_NAME):
+    DB = mysql.connector.connect(
+    host=DB_HOST,
+    user=DB_USER,
+    passwd=DB_USER_PASS
+    )
+
+    cursor = DB.cursor()
+    try:
+        print(f"Dropping [{db}] from mySQL")
+        cursor.execute(f"DROP DATABASE {db};") #remove database
+    except:
+        print("Database already removed!")
