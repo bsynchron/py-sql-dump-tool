@@ -105,10 +105,9 @@ def applyDump(db=DB_NAME):
                 else:
                     SQL_QUERY+=f"{j[0]} {j[1]},"
             SQL_QUERY+=");"
-            cursor.execute(SQL_QUERY)
             try:
                 EXISTS=False
-
+                cursor.execute(SQL_QUERY)
             except Exception as e:
                 EXISTS=True
                 print("Could not recreate SQL table! -> ",e)
