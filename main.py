@@ -1,6 +1,6 @@
 #!/bin/python3.6
 import os,sys,shutil
-from lib.sql import *
+from lib.dump import *
 
 if("-h" in sys.argv or "--help" in sys.argv):
     width=shutil.get_terminal_size()[0]
